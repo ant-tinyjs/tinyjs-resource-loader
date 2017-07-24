@@ -114,19 +114,18 @@ function sortJSONFrames (content) {
 function rewriteJSON (content, imagePathStr) {
   var sheetConfig = JSON.parse(content);
   var imagePath = /\"([^\"]+)\"/.exec(imagePathStr)[1];
-  // 修复file-loader的bug
-  imagePath = imagePath.replace('../../antfarm-resource/dist/', '');
   sheetConfig.meta.image = imagePath;
   return JSON.stringify(sheetConfig);
 }
 
-function buildFiles (context, query, name) {
+function buildFiles (context, query, options, name) {
   // build image
   var imageFullPath = path.resolve(query.output, `${name}.png`);
   var imageContent = fs.readFileSync(imageFullPath);
   var imageContext = Object.create(context);
   imageContext.resourcePath = imageFullPath;
   imageContext.query = query.image;
+  imageContext.options = options;
   var imagePathStr = urlLoader.call(imageContext, imageContent);
   // build json
   var jsonFullPath = path.resolve(query.output, `${name}.json`);
@@ -135,6 +134,7 @@ function buildFiles (context, query, name) {
   var jsonContext = Object.create(context);
   jsonContext.resourcePath = jsonFullPath;
   jsonContext.query = query.json;
+  jsonContext.options = options;
   var jsonPathStr = urlLoader.call(jsonContext, jsonContent);
   return jsonPathStr;
 }
@@ -174,7 +174,7 @@ module.exports = function (content) {
       fse.remove(outputTemp);
 
       setTimeout(function () {
-        var content = buildFiles(self, query, name)
+        var content = buildFiles(self, query, self.options, name)
         callback(null, content);
       }, 500);
     });
@@ -187,7 +187,7 @@ module.exports = function (content) {
     fse.remove(inputTemp);
     fse.remove(outputTemp);
 
-    var content = buildFiles(self, query, name)
+    var content = buildFiles(self, query, self.options, name)
     callback(null, content);
   })
 };
