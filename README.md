@@ -50,7 +50,7 @@ import tilesetAnimationJSON from './frames/animation/.tileset';
 ```
 
 ## 处理过程
-1. 动画抽帧：通过指定配置项来实现每 N 帧抽取一帧的功能
+1. 动画抽帧：通过指定 `skip` 配置项来实现每 N 帧抽取一帧的功能
 2. 合成雪碧图：通过 [spritesheet.js](https://github.com/krzysztof-o/spritesheet.js) 将图片合成雪碧图并生成 tinyjs 所需的 JSON 文件
 3. 图片压缩：利用 [node-pngquant](https://github.com/papandreou/node-pngquant) 对合成的 PNG 格式图片按照 `colors` 指定的颜色值进行压缩
 4. 将处理得到的 JSON 和图片文件写入 `game/images` 目录（由 `query.output` 指定）
