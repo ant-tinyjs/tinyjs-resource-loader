@@ -1,6 +1,9 @@
 # tinyjs-resource-loader
 用于处理 tinyjs 游戏资源的 webpack loader，旨在让 tinyjs 项目中的动画帧（雪碧图）合成流程更加符合 webpack 工作流
 
+## 安装
+`npm install tinyjs-resource-loader -D`
+
 ## 使用方法
 1. 在动画帧（雪碧图）目录中创建 `.tileset` （或任意名称）配置文件
 ```bash
