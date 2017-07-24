@@ -6,9 +6,9 @@
 ```bash
 animation
 ├── .tileset
-├── frame001.png
-├── frame002.png
-└── frame003.png
+├── 001.png
+├── 002.png
+└── 003.png
 ```
 2. 参照[图片处理参数](#图片处理参数)以 `yaml` 格式对 `.tileset` 进行配置
 ```yaml
