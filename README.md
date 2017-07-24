@@ -1,6 +1,83 @@
 # tinyjs-resource-loader
-用于处理 tiny.js 游戏资源的 webpack loader
+用于处理 tinyjs 游戏资源的 webpack loader，旨在让 tinyjs 游戏的动画帧（雪碧图）合成流程更加符合 webpack 工作流
+
+## 使用方法
+1. 在动画帧（雪碧图）目录中创建 `.tileset` （或任意名称）配置文件
+```bash
+animation
+├── .tileset
+├── frame001.png
+├── frame002.png
+└── frame003.png
+```
+2. 参照[图片处理参数](#图片处理参数)以 `yaml` 格式对 `.tileset` 进行配置
+```yaml
+skip: 1
+colors: 16
+```
+3. 在 `webpack.config.js` 中配置 `tinyjs-resource-loader`
+```javascript
+module.export = {
+// statements
+  module: {
+    loaders: [
+      {
+        test: /\.tileset/i,
+        loader: 'tinyjs-resource-loader',
+        query: {
+          output: 'game/images',
+          image: {
+            name: 'resources/[name].[ext]',
+            limit: 4096
+          },
+          json: {
+            name: 'resources/[name].[ext]',
+            limit: 1
+          }
+        }
+      }
+    ]
+  }
+};
+```
+4. 在模块中引用 `.tileset` 文件
+```bash
+game
+├── frames
+│   ├── animation # 这里是动画帧存放的目录
+│   │   ├── .tileset
+│   │   ├── 001.png
+│   │   ├── 002.png
+│   │   └── 003.png
+├── images # 图片处理后的 JSON 和图片存放目录
+│   ├── tileset-animation.json
+│   └── tileset-animation.png
+└── resources.js
+```
+```javascript
+import tilesetVendorJSON from './frames/vendor/.tileset'; // 得到的是 JSON 文件的路径
+```
+5. 当然，webpack 最后也会将 JSON 和图片构建到 `[outputPath]/resources` 目录中
+
+## 处理过程
+1. 动画抽帧：通过指定配置项来实现每 N 帧抽取一帧的功能
+2. 合成雪碧图：通过 [spritesheet.js](https://github.com/krzysztof-o/spritesheet.js) 将图片合成雪碧图并生成 tinyjs 所需的 JSON 文件
+3. 图片压缩：利用 [node-pngquant](https://github.com/papandreou/node-pngquant) 对合成的 PNG 格式图片安装颜色值进行压缩
+4. webpack构建：通过 [url-loader](https://github.com/webpack-contrib/url-loader) 将处理好的 JSON 和图片构建到项目的指定目录中
 
 ## 系统依赖
-ImageMagick
-pngquant
+在使用 tinyjs-resource-loader 处理 tinyjs 项目中的 json 和 png 之前，首先应确保系统中安装了以下工具：
++ [ImageMagick](https://www.imagemagick.org/script/download.php)：提供 [spritesheet.js](https://github.com/krzysztof-o/spritesheet.js) 合成雪碧图所需的 `identify` 命令（主要用于获取一个或多个图像文件的格式和特性）
++ [pngquant](https://pngquant.org/)：提供 [node-pngquant](https://github.com/papandreou/node-pngquant) 压缩图片所需的 `pngquant` 命令
+> 注意：如果系统中没有安装以上的依赖，构建时会跳过处理过程中的前 3 步，直接从 `output` 读取 JSON 和图片，通过 [url-loader](https://github.com/webpack-contrib/url-loader) 将它们构建到指定目录中，并产生 webpack warning。这是为了兼容项目在 windows 环境或者远程机器也能够进行构建
+
+## 配置参数
++ `query.output`: 图片处理后输出 JSON 和图片文件的目录，一般选择源码中的目录，建议提交远程仓库
++ `query.image`：图片文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数
++ `query.json`：JSON 文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数
+
+## 图片处理参数
++ `trim`：移除图片周围的空白，参照 [spritesheet.js](https://github.com/krzysztof-o/spritesheet.js)，默认 `false`
++ `padding`: 雪碧图中图片的间隙，参照 [spritesheet.js](https://github.com/krzysztof-o/spritesheet.js)，默认 `10`
++ `skip`：抽帧时跳过的帧数，如果指定为 N，会每跳过 N 帧保留一帧，默认 `0`
++ `colors`：雪碧图进行图片压缩的颜色数，默认 `256`
