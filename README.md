@@ -82,7 +82,7 @@ dist
 在使用 tinyjs-resource-loader 处理 tinyjs 项目中的 JSON 和 png 之前，首先应确保系统中安装了以下工具：
 + [ImageMagick](https://www.imagemagick.org/script/download.php)：提供 [spritesheet.js](https://github.com/krzysztof-o/spritesheet.js) 合成雪碧图所需的 `identify` 命令（主要用于获取一个或多个图像文件的格式和特性）
 + [pngquant](https://pngquant.org/)：提供 [node-pngquant](https://github.com/papandreou/node-pngquant) 压缩图片所需的 `pngquant` 命令
-> 注意：如果系统中没有安装以上的依赖，构建时会跳过处理过程中的前 3 步，直接从 `output` 读取 JSON 和图片，并通过 [url-loader](https://github.com/webpack-contrib/url-loader) 将它们构建到指定目录中，但会产生 webpack warning。这是为了确保项目在构建过一次以后，在 windows 环境或者远程机器也能够进行构建，兼顾跨平台或者云构建的需求
+> 注意：如果系统中没有安装以上的依赖，构建时会跳过处理过程中的前 4 步，直接从 `output` 读取 JSON 和图片，并通过 [url-loader](https://github.com/webpack-contrib/url-loader) 将它们构建到指定目录中，但会产生 webpack warning。这是为了确保项目在构建过一次以后，在 windows 环境或者远程机器也能够进行构建，兼顾跨平台或者云构建的需求
 
 ## 配置参数
 + `query.output`: 图片处理后输出 JSON 和图片文件的目录，一般选择源码中的目录，建议提交远程仓库
