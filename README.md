@@ -70,7 +70,7 @@ game
 │   └── tileset-animation.png
 └── resources.js
 ```
-5. 最后通过 [url-loader](https://github.com/webpack-contrib/url-loader) 将 `game/images`中的 JSON 和图片构建到 `dist/resources` 中（由 webpack config 中的 `output.path` 指定）
+5. 最后通过 [url-loader](https://github.com/webpack-contrib/url-loader) 将 `game/images`中的 JSON 和图片构建到 `dist/resources` 中（由 webpack config 中的 `output.path` 指定）。这一步会自动将 JSON 中 `meta.image` 项替换为图片的 `publicPath` 或 `base64` 编码（取决于 `query.image` 的配置）。
 ```bash
 dist
 └── resources
