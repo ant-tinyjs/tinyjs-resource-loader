@@ -33,5 +33,11 @@
     "tempfile": "^2.0.0",
     "url-loader": "^0.5.9",
     "yaml-js": "^0.1.5"
+  },
+  "devDependencies": {
+    "eslint": "^4.3.0",
+    "eslint-config-standard": "^10.2.1",
+    "eslint-plugin-promise": "^3.5.0",
+    "eslint-plugin-standard": "^3.0.1"
   }
 }
