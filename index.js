@@ -8,6 +8,7 @@ var Promise = require('bluebird');
 var exec = require('child_process').exec;
 var PngQuant = require('pngquant');
 var urlLoader = require('url-loader');
+var im = require('imagemagick-stream');
 
 var spritesheetJS = path.resolve(__dirname, 'node_modules/spritesheet-js/index.js');
 
@@ -15,11 +16,19 @@ function zeroPad (num, n) {
   return String('00000' + num).slice(-n);
 };
 
-function copyFile (source, dest) {
-  return new Promise (function (resolve) {
+function copyFile (source, dest, scale) {
+  return new Promise(function (resolve) {
     var readStream = fs.createReadStream(source);
     var writeStream = fs.createWriteStream(dest);
-    readStream.pipe(writeStream);
+
+    if (scale && scale < 1) {
+      var percentage = `${parseInt(scale * 100, 10)}%`;
+      var resize = im().resize(percentage);
+      readStream.pipe(resize).pipe(writeStream);
+    } else {
+      readStream.pipe(writeStream);
+    }
+
     writeStream.on('finish', function () {
       resolve();
     });
@@ -27,8 +36,15 @@ function copyFile (source, dest) {
 }
 
 // 抽帧
-function trimFrames (name, source, dest, skip) {
-  var files = fs.readdirSync(source);
+function trimFrames (name, source, dest, config) {
+  var files = [];
+
+  if (config.files) {
+    files = Object.keys(config.files);
+  } else {
+    files = fs.readdirSync(source);
+  }
+
   fs.mkdirSync(dest);
 
   files = files.filter(function (file) {
@@ -38,14 +54,21 @@ function trimFrames (name, source, dest, skip) {
   var promises = [];
 
   files.forEach(function (file, index) {
-    var factor = skip + 1;
+    var factor = config.skip + 1;
 
     if (index % factor !== 0) return false;
 
     var filePath = path.join(source, file);
-    var fileIndex = zeroPad(parseInt(index / factor + 1, 10), 3);
-    var filename = skip ? `${name}-${fileIndex}.png` : `${name}-${file}`;
-    promises.push(copyFile(filePath, path.join(dest, filename)))
+    var fileIndex, filename;
+
+    if (config.files) {
+      filename = `${name}-${config.files[file]}.png`;
+    } else {
+      fileIndex = zeroPad(parseInt(index / factor + 1, 10), 3);
+      filename = config.skip ? `${name}-${fileIndex}.png` : `${name}-${file}`;
+    }
+
+    promises.push(copyFile(filePath, path.join(dest, filename), config.scale));
   });
 
   return Promise.all(promises);
@@ -70,7 +93,7 @@ function spritesheet (name, input, output, config) {
     exec(`node ${spritesheetJS} ${args.join(' ')} ${input}`, function (error, stdout, stderr) {
       if (error) return reject(error);
 
-      if (stderr) return reject(stderror);
+      if (stderr) return reject(stderr);
 
       var jsonPath = path.join(output, `${name}.json`);
       var oldJSON = fs.readFileSync(jsonPath);
@@ -83,9 +106,9 @@ function spritesheet (name, input, output, config) {
 
 // png压缩
 function pngOptimize (source, dest, colors) {
-  return new Promise(function (resolve) {
+  return new Promise(function (resolve, reject) {
     var pngquant = new PngQuant([colors]);
-    var readStream = fs.createReadStream(source)
+    var readStream = fs.createReadStream(source);
     var writeStream = fs.createWriteStream(dest);
     readStream.pipe(pngquant).pipe(writeStream);
     readStream.on('error', function (error) {
@@ -113,7 +136,7 @@ function sortJSONFrames (content) {
 
 function rewriteJSON (content, imagePathStr) {
   var sheetConfig = JSON.parse(content);
-  var imagePath = /\"([^\"]+)\"/.exec(imagePathStr)[1];
+  var imagePath = /"([^"]+)"/.exec(imagePathStr)[1];
   sheetConfig.meta.image = imagePath;
   return JSON.stringify(sheetConfig);
 }
@@ -152,51 +175,57 @@ module.exports = function (content) {
   self.cacheable(true);
   self.addContextDependency(self.context);
 
+  if (config.files) {
+    Object.keys(config.files).forEach(function (filePath) {
+      var fullPath = path.resolve(self.context, filePath);
+      self.addDependency(fullPath);
+    });
+  }
+
   var inputTemp = tempfile();
   var outputTemp = tempfile();
 
-  trimFrames(name, self.context, inputTemp, config.skip)
-  .then(function () {
-    var source = path.join(inputTemp, '*.png');
-    return spritesheet(name, source, outputTemp, config);
-  })
-  .then(function () {
-    var source = path.join(outputTemp, `${name}.png`);
-    var dest = path.resolve(query.output, `${name}.png`);
-    return pngOptimize(source, dest, config.colors);
-  })
-  .then(function () {
-    var source = path.join(outputTemp, `${name}.json`);
-    var dest = path.resolve(query.output, `${name}.json`);
+  trimFrames(name, self.context, inputTemp, config)
+    .then(function () {
+      var source = path.join(inputTemp, '*.png');
+      return spritesheet(name, source, outputTemp, config);
+    })
+    .then(function () {
+      var source = path.join(outputTemp, `${name}.png`);
+      var dest = path.resolve(query.output, `${name}.png`);
+      return pngOptimize(source, dest, config.colors);
+    })
+    .then(function () {
+      var source = path.join(outputTemp, `${name}.json`);
+      var dest = path.resolve(query.output, `${name}.json`);
 
-    fse.copy(source, dest, function () {
+      fse.copy(source, dest, function () {
+        fse.remove(inputTemp);
+        fse.remove(outputTemp);
+
+        setTimeout(function () {
+          var content = buildFiles(self, query, self.options, name);
+          callback(null, content);
+        }, 500);
+      });
+    })
+    .catch(function () {
+      self.emitWarning(`Error occurred in image processing, so ${name}.json and ${name}.png will be directly read from ouput directory. See https://github.com/ant-tinyjs/tinyjs-resource-loader for more info.`);
+
       fse.remove(inputTemp);
       fse.remove(outputTemp);
 
-      setTimeout(function () {
-        var content = buildFiles(self, query, self.options, name)
-        callback(null, content);
-      }, 500);
+      var content = buildFiles(self, query, self.options, name);
+      callback(null, content);
     });
-  })
-  .catch(function () {
-    var source = path.resolve(query.output, `${name}.json`);
-    var jsonStr = fs.readFileSync(source);
-    self.emitWarning(`Error occurred in image processing, so ${name}.json and ${name}.png will be directly read from ouput directory. See https://github.com/ant-tinyjs/tinyjs-resource-loader for more info.`);
-
-    fse.remove(inputTemp);
-    fse.remove(outputTemp);
-
-    var content = buildFiles(self, query, self.options, name)
-    callback(null, content);
-  })
 };
 
 module.exports.raw = true;
 
 var defaults = {
   trim: false,
+  scale: 1,
   padding: '10',
   colors: 256,
   skip: 0
-}
+};
