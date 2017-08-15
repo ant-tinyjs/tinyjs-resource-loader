@@ -17,6 +17,7 @@ animation
 ```yaml
 skip: 1
 colors: 16
+scale: 0.5
 ```
 3. 在 `webpack.config.js` 中配置 `tinyjs-resource-loader`，该 loader 应作用于上面的配置文件
 ```javascript
@@ -91,6 +92,16 @@ dist
 
 ## 图片处理参数
 + `trim`：移除图片周围的空白，参照 [spritesheet.js](https://github.com/krzysztof-o/spritesheet.js)，默认 `false`
++ `scale`: 图片缩放比例，基于 [imagemagick-stream](https://github.com/eivindfjeldstad/imagemagick-stream) 对图片进行缩放，默认 `1`
 + `padding`: 雪碧图中图片的间隙，参照 [spritesheet.js](https://github.com/krzysztof-o/spritesheet.js)，默认 `10`
 + `skip`：抽帧时跳过的帧数，如果指定为 N，会每跳过 N 帧保留一帧，默认 `0`
 + `colors`：雪碧图进行图片压缩的颜色数，默认 `256`
++ `files`: 以 `[path]-[name]` 对象格式配置的文件路径，如果配置了 `files`，将不会从 `.tileset` 所在目录读取动画帧，而且从 `files` 指定的路径中读取
+
+`files` 配置的路径为相对于 `.tileset` 所在目录的路径，示例：
+```yaml
+files:
+  ../animation-a/001.png: animation-a
+  ../animation-b/001.png: animation-b
+  ../animation-c/001.png: animation-c
+```
