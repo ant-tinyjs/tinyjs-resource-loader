@@ -185,6 +185,16 @@ module.exports = function (content) {
   var inputTemp = tempfile();
   var outputTemp = tempfile();
 
+  if (!query.process) {
+    self.emitWarning(`process option is disabled, so ${name}.json and ${name}.png will be directly read from ouput directory.`);
+
+    fse.remove(inputTemp);
+    fse.remove(outputTemp);
+
+    var result = buildFiles(self, query, self.options, name);
+    return callback(null, result);
+  }
+
   trimFrames(name, self.context, inputTemp, config)
     .then(function () {
       var source = path.join(inputTemp, '*.png');
