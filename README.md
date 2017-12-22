@@ -87,8 +87,10 @@ dist
 
 ## 配置参数
 + `query.output`: 图片处理后输出 JSON 和图片文件的目录，一般选择源码中的目录，建议提交远程仓库
++ `query.loader`: 指定 JSON 文件 由 `url-loader` 还是 `json-loader` 处理，默认为 `url`，可选 `json`
++ `query.process`：是否进行图片处理，`false` 时直接从目录中读取先前构建好的文件
 + `query.image`：图片文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数
-+ `query.json`：JSON 文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数
++ `query.json`：JSON 文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数。`query.loader` 为 `json` 时无效
 
 ## 图片处理参数
 + `trim`：移除图片周围的空白，参照 [spritesheet.js](https://github.com/krzysztof-o/spritesheet.js)，默认 `false`

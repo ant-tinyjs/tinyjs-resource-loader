@@ -8,6 +8,7 @@ var Promise = require('bluebird');
 var exec = require('child_process').exec;
 var PngQuant = require('pngquant');
 var urlLoader = require('url-loader');
+var jsonLoader = require('json-loader');
 var im = require('imagemagick-stream');
 
 var spritesheetJS = path.resolve(__dirname, 'node_modules/spritesheet-js/index.js');
@@ -158,8 +159,15 @@ function buildFiles (context, query, options, name) {
   jsonContext.resourcePath = jsonFullPath;
   jsonContext.query = query.json;
   jsonContext.options = options;
-  var jsonPathStr = urlLoader.call(jsonContext, jsonContent);
-  return jsonPathStr;
+  var content = '';
+
+  if (query.loader === 'json') {
+    content = jsonLoader.call(jsonContext, jsonContent);
+  } else {
+    content = urlLoader.call(jsonContext, jsonContent);
+  }
+
+  return content;
 }
 
 module.exports = function (content) {
