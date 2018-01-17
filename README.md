@@ -99,6 +99,8 @@ dist
 + `skip`：抽帧时跳过的帧数，如果指定为 N，会每跳过 N 帧保留一帧，默认 `0`
 + `colors`：雪碧图进行图片压缩的颜色数，默认 `256`
 + `files`: 以 `[path]-[name]` 对象格式配置的文件路径，如果配置了 `files`，将不会从 `.tileset` 所在目录读取动画帧，而且从 `files` 指定的路径中读取
++ `exclues`: 合成时排除的图片路径
++ `interpolate`: `$name$-fallback` 形式的字符串（可不包含 `$name$`），用于修改名称
 
 `files` 配置的路径为相对于 `.tileset` 所在目录的路径，示例：
 ```yaml

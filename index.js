@@ -39,6 +39,13 @@ function copyFile (source, dest, scale) {
 // 抽帧
 function trimFrames (name, source, dest, config) {
   var files = [];
+  var excludes = [];
+
+  if (config.excludes && config.excludes.length) {
+    excludes = config.excludes.map(function (exclude) {
+      return path.resolve('/', exclude);
+    });
+  }
 
   if (config.files) {
     files = Object.keys(config.files);
@@ -49,8 +56,11 @@ function trimFrames (name, source, dest, config) {
   fs.mkdirSync(dest);
 
   files = files.filter(function (file) {
-    return path.extname(file) === '.png';
+    var match = ~excludes.indexOf(path.resolve('/', file));
+    return path.extname(file) === '.png' && !match;
   });
+
+  console.log(excludes);
 
   var promises = [];
 
@@ -180,6 +190,8 @@ module.exports = function (content) {
   var parsed = path.parse(self.context);
   var name = `tileset-${parsed.name}`;
 
+  if (config.interpolate) name = config.interpolate.replace('$name$', name);
+
   self.cacheable(true);
   self.addContextDependency(self.context);
 
@@ -241,9 +253,12 @@ module.exports = function (content) {
 module.exports.raw = true;
 
 var defaults = {
+  interpolate: '',
   trim: false,
   scale: 1,
   padding: '10',
   colors: 256,
-  skip: 0
+  skip: 0,
+  files: null,
+  excludes: []
 };
