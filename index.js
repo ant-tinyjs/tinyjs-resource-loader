@@ -60,8 +60,6 @@ function trimFrames (name, source, dest, config) {
     return path.extname(file) === '.png' && !match;
   });
 
-  console.log(excludes);
-
   var promises = [];
 
   files.forEach(function (file, index) {
