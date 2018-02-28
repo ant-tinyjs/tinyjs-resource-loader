@@ -116,10 +116,16 @@ function spritesheet (name, input, output, config) {
 // png压缩
 function pngOptimize (source, dest, colors) {
   return new Promise(function (resolve, reject) {
-    var pngquant = new PngQuant([colors]);
     var readStream = fs.createReadStream(source);
     var writeStream = fs.createWriteStream(dest);
-    readStream.pipe(pngquant).pipe(writeStream);
+
+    if (colors) {
+      var pngquant = new PngQuant([colors]);
+      readStream.pipe(pngquant).pipe(writeStream);
+    } else {
+      readStream.pipe(writeStream);
+    }
+
     readStream.on('error', function (error) {
       reject(error);
     });
@@ -259,7 +265,7 @@ var defaults = {
   trim: false,
   scale: 1,
   padding: '10',
-  colors: 256,
+  colors: 0,
   skip: 0,
   files: null,
   excludes: []
