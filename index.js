@@ -237,7 +237,11 @@ module.exports = function (content) {
         }, 500);
       });
     })
-    .catch(function () {
+    .catch(function (error) {
+      if (query.verbose) {
+        console.log(error);
+      }
+
       self.emitWarning(`Error occurred in image processing, so ${name}.json and ${name}.png will be directly read from ouput directory. See https://github.com/ant-tinyjs/tinyjs-resource-loader for more info.`);
 
       fse.remove(inputTemp);
