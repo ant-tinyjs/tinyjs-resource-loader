@@ -156,7 +156,11 @@ function rewriteJSON (content, imagePathStr) {
   return JSON.stringify(sheetConfig);
 }
 
-function buildFiles (context, query, options, name) {
+function buildFiles (context, query, options = {}, name) {
+  var content = '';
+  if (query.loader === 'none') {
+    return content;
+  }
   // build image
   var imageFullPath = path.resolve(query.output, `${name}.png`);
   var imageContent = fs.readFileSync(imageFullPath);
@@ -173,7 +177,6 @@ function buildFiles (context, query, options, name) {
   jsonContext.resourcePath = jsonFullPath;
   jsonContext.query = query.json;
   jsonContext.options = options;
-  var content = '';
 
   if (query.loader === 'json') {
     content = jsonLoader.call(jsonContext, jsonContent);
@@ -225,6 +228,12 @@ module.exports = function (content) {
       return spritesheet(name, source, outputTemp, config);
     })
     .then(function () {
+      if (!fs.existsSync(query.output)) {
+        const err = fs.mkdirSync(query.output, 0o777);
+        if (err) {
+          throw err;
+        }
+      }
       var source = path.join(outputTemp, `${name}.png`);
       var dest = path.resolve(query.output, `${name}.png`);
       return pngOptimize(source, dest, config.colors);

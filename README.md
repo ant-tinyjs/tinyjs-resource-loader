@@ -1,4 +1,7 @@
 # tinyjs-resource-loader
+
+> GitHub: https://github.com/ant-tinyjs/tinyjs-resource-loader
+
 用于处理 tinyjs 游戏资源的 webpack loader，旨在让 tinyjs 项目中的动画帧（雪碧图）合成流程更加符合 webpack 工作流
 
 ## 安装
@@ -87,7 +90,7 @@ dist
 
 ## 配置参数
 + `query.output`: 图片处理后输出 JSON 和图片文件的目录，一般选择源码中的目录，建议提交远程仓库
-+ `query.loader`: 指定 JSON 文件 由 `url-loader` 还是 `json-loader` 处理，默认为 `url`，可选 `json`
++ `query.loader`: 指定 JSON 文件 由 `url-loader` 还是 `json-loader` 处理或不处理，默认为 `url`，可选 `json`、`none`
 + `query.process`：是否进行图片处理，`false` 时直接从目录中读取先前构建好的文件
 + `query.image`：图片文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数
 + `query.json`：JSON 文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数。`query.loader` 为 `json` 时无效
