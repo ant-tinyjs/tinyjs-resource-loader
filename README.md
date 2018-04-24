@@ -86,15 +86,17 @@ dist
 在使用 tinyjs-resource-loader 处理 tinyjs 项目中的 JSON 和 png 之前，首先应确保系统中安装了以下工具：
 + [ImageMagick](https://www.imagemagick.org/script/download.php)：提供 [spritesheet.js](https://github.com/krzysztof-o/spritesheet.js) 合成雪碧图所需的 `identify` 命令（主要用于获取一个或多个图像文件的格式和特性）
 + [pngquant](https://pngquant.org/)：提供 [node-pngquant](https://github.com/papandreou/node-pngquant) 压缩图片所需的 `pngquant` 命令
-> 注意：如果系统中没有安装以上的依赖，构建时会跳过处理过程中的前 4 步，直接从 `output` 读取 JSON 和图片，并通过 [url-loader](https://github.com/webpack-contrib/url-loader) 将它们构建到指定目录中，但会产生 webpack warning。这是为了确保项目在构建过一次以后，在 windows 环境或者远程机器也能够进行构建，兼顾跨平台或者云构建的需求
+
 
 ## 配置参数
-+ `query.output`: 图片处理后输出 JSON 和图片文件的目录，一般选择源码中的目录，建议提交远程仓库
-+ `query.loader`: 指定 JSON 文件 由 `url-loader` 还是 `json-loader` 处理或不处理，默认为 `url`，可选 `json`、`none`
-+ `query.process`：是否进行图片处理，`false` 时直接从目录中读取先前构建好的文件
++ `query.output`: 图片处理后输出 JSON 和图片文件的目录，一般选择源码中的目录，建议提交远程仓库。设置为空时，则不会在源码目录中输出。
++ `query.loader`: 指定 JSON 文件 由 `url-loader` 还是 `json-loader` 处理，或者完全不处理。默认为 `url`，可选 `json`、`none`
++ `query.process`：是否强制进行图片处理，`false` 时直接从目录中读取先前构建好的文件
 + `query.image`：图片文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数
 + `query.json`：JSON 文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数。`query.loader` 为 `json` 时无效
-+ `query.verbose`: 是否展示完整日志
++ `query.verbose`: 是否展示完整错误日志
+
+> `query.process` 设置为 `false` 时，会跳过图片处理过程中的前 4 步，直接从 `query.output` 配置的目录中读取 JSON 和图片，并通过 [url-loader](https://github.com/webpack-contrib/url-loader) 将它们构建到指定目录中，但会产生 **webpack warning**。这是为了确保项目在本地构建过一次以后，在远程机器（很可能没有安装 ImageMagick 或 pngquant 系统依赖）也能够进行构建，兼顾跨平台云构建的需求
 
 ## 图片处理参数
 + `trim`：移除图片周围的空白，参照 [spritesheet.js](https://github.com/krzysztof-o/spritesheet.js)，默认 `false`

@@ -196,6 +196,12 @@ module.exports = function (content) {
 
   var parsed = path.parse(self.context);
   var name = `tileset-${parsed.name}`;
+  var inputTemp = tempfile();
+  var outputTemp = tempfile();
+
+  if (typeof query.process === 'undefined') query.process = true;
+
+  if (!query.output) query.output = inputTemp;
 
   if (config.interpolate) name = config.interpolate.replace('$name$', name);
 
@@ -208,17 +214,22 @@ module.exports = function (content) {
       self.addDependency(fullPath);
     });
   }
-
-  var inputTemp = tempfile();
-  var outputTemp = tempfile();
-
+  // 如果禁用了 process 参数
   if (!query.process) {
-    self.emitWarning(`process option is disabled, so ${name}.json and ${name}.png will be directly read from ouput directory.`);
+    var result = '';
+    var imageFullPath = path.resolve(query.output, `${name}.png`);
+    if (!fs.existsSync(imageFullPath)) {
+      self.emitError(`检测到 process 参数被禁用, 但无法从 ouput 参数配置的目录中读取 ${name}.json 和 ${name}.png，请确保这些文件在上次构建时已经生成到该目录中。`);
+    } else {
+      self.emitWarning(`检测到 process 参数被禁用, 不会执行图片合成及处理过程。${name}.json 和 ${name}.png 会直接从 ouput 参数配置的目录中读取。`);
+      result = buildFiles(self, query, self.options, name);
+    }
 
-    fse.remove(inputTemp);
-    fse.remove(outputTemp);
+    process.nextTick(function () {
+      fse.remove(inputTemp);
+      fse.remove(outputTemp);
+    });
 
-    var result = buildFiles(self, query, self.options, name);
     return callback(null, result);
   }
 
@@ -243,26 +254,30 @@ module.exports = function (content) {
       var dest = path.resolve(query.output, `${name}.json`);
 
       fse.copy(source, dest, function () {
-        fse.remove(inputTemp);
-        fse.remove(outputTemp);
-
         setTimeout(function () {
           var content = buildFiles(self, query, self.options, name);
+          process.nextTick(function () {
+            fse.remove(inputTemp);
+            fse.remove(outputTemp);
+          });
           callback(null, content);
         }, 500);
       });
     })
     .catch(function (error) {
       if (query.verbose) {
-        console.log(error);
+        console.error(error);
       }
 
-      self.emitWarning(`Error occurred in image processing, so ${name}.json and ${name}.png will be directly read from ouput directory. See https://github.com/ant-tinyjs/tinyjs-resource-loader for more info.`);
-
-      fse.remove(inputTemp);
-      fse.remove(outputTemp);
+      if (query.process) {
+        self.emitError(`图片合成或处理过程中发生错误, 系统中很可能没有正确安装 ImageMagick 或 pngquant 依赖。请参考 https://github.com/ant-tinyjs/tinyjs-resource-loader#%E7%B3%BB%E7%BB%9F%E4%BE%9D%E8%B5%96 来解决该问题。`);
+      }
 
       var content = buildFiles(self, query, self.options, name);
+      process.nextTick(function () {
+        fse.remove(inputTemp);
+        fse.remove(outputTemp);
+      });
       callback(null, content);
     });
 };
