@@ -23,15 +23,15 @@
   },
   "homepage": "https://github.com/ant-tinyjs/tinyjs-resource-loader#readme",
   "dependencies": {
+    "bin-packing-core": "^0.1.3",
     "bluebird": "^3.5.0",
     "file-loader": "^0.11.2",
+    "fs-extra": "^6.0.1",
+    "glob": "^7.1.2",
     "graceful-fs": "^4.1.11",
-    "imagemagick-stream": "^4.1.1",
     "json-loader": "^0.5.7",
     "loader-utils": "^1.1.0",
-    "node-fs-extra": "^0.8.2",
     "pngquant": "^1.3.0",
-    "spritesheet-js": "^1.2.6",
     "tempfile": "^2.0.0",
     "url-loader": "^0.5.9",
     "yaml-js": "^0.1.5"

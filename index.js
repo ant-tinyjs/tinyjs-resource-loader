@@ -1,153 +1,20 @@
 var path = require('path');
 var fs = require('graceful-fs');
-var fse = require('node-fs-extra');
+var fse = require('fs-extra');
 var yaml = require('yaml-js');
 var tempfile = require('tempfile');
 var loaderUtils = require('loader-utils');
 var Promise = require('bluebird');
-var exec = require('child_process').exec;
-var PngQuant = require('pngquant');
+
+var BinPacking = require('./lib/BinPacking');
+var FramesPacker = require('./lib/FramesPacker');
+var preprocessAsync = require('./lib/preprocessAsync');
+var getImageSizeAsync = require('./lib/getImageSizeAsync');
+var spritesheetAsync = require('./lib/spritesheetAsync');
+var pngOptimizeAsync = require('./lib/pngOptimizeAsync');
+
 var urlLoader = require('url-loader');
 var jsonLoader = require('json-loader');
-var im = require('imagemagick-stream');
-
-var spritesheetJS = path.resolve(__dirname, 'node_modules/spritesheet-js/index.js');
-
-function zeroPad (num, n) {
-  return String('00000' + num).slice(-n);
-};
-
-function copyFile (source, dest, scale) {
-  return new Promise(function (resolve) {
-    var readStream = fs.createReadStream(source);
-    var writeStream = fs.createWriteStream(dest);
-
-    if (scale && scale < 1) {
-      var percentage = `${parseInt(scale * 100, 10)}%`;
-      var resize = im().resize(percentage);
-      readStream.pipe(resize).pipe(writeStream);
-    } else {
-      readStream.pipe(writeStream);
-    }
-
-    writeStream.on('finish', function () {
-      resolve();
-    });
-  });
-}
-
-// 抽帧
-function trimFrames (name, source, dest, config) {
-  var files = [];
-  var excludes = [];
-
-  if (config.excludes && config.excludes.length) {
-    excludes = config.excludes.map(function (exclude) {
-      return path.resolve('/', exclude);
-    });
-  }
-
-  if (config.files) {
-    files = Object.keys(config.files);
-  } else {
-    files = fs.readdirSync(source);
-  }
-
-  fs.mkdirSync(dest);
-
-  files = files.filter(function (file) {
-    var match = ~excludes.indexOf(path.resolve('/', file));
-    return path.extname(file) === '.png' && !match;
-  });
-
-  var promises = [];
-
-  files.forEach(function (file, index) {
-    var factor = config.skip + 1;
-
-    if (index % factor !== 0) return false;
-
-    var filePath = path.join(source, file);
-    var fileIndex, filename;
-
-    if (config.files) {
-      filename = `${name}-${config.files[file]}.png`;
-    } else {
-      fileIndex = zeroPad(parseInt(index / factor + 1, 10), 3);
-      filename = config.skip ? `${name}-${fileIndex}.png` : `${name}-${file}`;
-    }
-
-    promises.push(copyFile(filePath, path.join(dest, filename), config.scale));
-  });
-
-  return Promise.all(promises);
-}
-
-// 合成雪碧图
-function spritesheet (name, input, output, config) {
-  var args = [
-    '-f',
-    'json',
-    '-p',
-    output,
-    '-n',
-    name,
-    '--trim',
-    config.trim,
-    '--padding',
-    config.padding
-  ];
-
-  return new Promise(function (resolve, reject) {
-    exec(`node ${spritesheetJS} ${args.join(' ')} ${input}`, function (error, stdout, stderr) {
-      if (error) return reject(error);
-
-      if (stderr) return reject(stderr);
-
-      var jsonPath = path.join(output, `${name}.json`);
-      var oldJSON = fs.readFileSync(jsonPath);
-      var newJSON = sortJSONFrames(oldJSON);
-      fs.writeFileSync(jsonPath, newJSON, 'utf-8');
-      resolve(stdout);
-    });
-  });
-}
-
-// png压缩
-function pngOptimize (source, dest, colors) {
-  return new Promise(function (resolve, reject) {
-    var readStream = fs.createReadStream(source);
-    var writeStream = fs.createWriteStream(dest);
-
-    if (colors) {
-      var pngquant = new PngQuant([colors]);
-      readStream.pipe(pngquant).pipe(writeStream);
-    } else {
-      readStream.pipe(writeStream);
-    }
-
-    readStream.on('error', function (error) {
-      reject(error);
-    });
-    writeStream.on('finish', function () {
-      resolve();
-    });
-  });
-}
-
-function sortJSONFrames (content) {
-  var json = JSON.parse(content);
-  var oldFrames = json.frames;
-  var newFrames = {};
-  var frameIds = Object.keys(oldFrames).sort();
-
-  frameIds.forEach(function (frameId) {
-    newFrames[frameId] = oldFrames[frameId];
-  });
-
-  json.frames = newFrames;
-  return JSON.stringify(json, null, 2);
-}
 
 function rewriteJSON (content, imagePathStr) {
   var sheetConfig = JSON.parse(content);
@@ -192,18 +59,12 @@ module.exports = function (content) {
   var callback = self.async();
   var query = loaderUtils.getOptions(self) || {};
   var config = yaml.load(content.toString()) || {};
-  config = Object.assign({}, defaults, config);
-
-  var parsed = path.parse(self.context);
-  var name = `tileset-${parsed.name}`;
+  var framesPacker = new FramesPacker(self.context, config);
   var inputTemp = tempfile();
   var outputTemp = tempfile();
 
-  if (typeof query.process === 'undefined') query.process = true;
-
-  if (!query.output) query.output = inputTemp;
-
-  if (config.interpolate) name = config.interpolate.replace('$name$', name);
+  query.process = typeof query.process === 'undefined' ? true : query.process;
+  query.output = query.output || inputTemp;
 
   self.cacheable(true);
   self.addContextDependency(self.context);
@@ -217,12 +78,12 @@ module.exports = function (content) {
   // 如果禁用了 process 参数
   if (!query.process) {
     var result = '';
-    var imageFullPath = path.resolve(query.output, `${name}.png`);
+    var imageFullPath = path.resolve(query.output, `${framesPacker.output}.png`);
     if (!fs.existsSync(imageFullPath)) {
-      self.emitError(`检测到 process 参数被禁用, 但无法从 ouput 参数配置的目录中读取 ${name}.json 和 ${name}.png，请确保这些文件在上次构建时已经生成到该目录中。`);
+      self.emitError(`检测到 process 参数被禁用, 但无法从 output 参数配置的目录中读取 ${framesPacker.output}.json 和 ${framesPacker.output}.png，请确保这些文件在上次构建时已经生成到该目录中。`);
     } else {
-      self.emitWarning(`检测到 process 参数被禁用, 不会执行图片合成及处理过程。${name}.json 和 ${name}.png 会直接从 ouput 参数配置的目录中读取。`);
-      result = buildFiles(self, query, self.options, name);
+      self.emitWarning(`检测到 process 参数被禁用, 不会执行图片合成及处理过程。${framesPacker.output}.json 和 ${framesPacker.output}.png 会直接从 output 参数配置的目录中读取。`);
+      result = buildFiles(self, query, self.options, framesPacker.output);
     }
 
     process.nextTick(function () {
@@ -233,36 +94,39 @@ module.exports = function (content) {
     return callback(null, result);
   }
 
-  trimFrames(name, self.context, inputTemp, config)
-    .then(function () {
-      var source = path.join(inputTemp, '*.png');
-      return spritesheet(name, source, outputTemp, config);
-    })
-    .then(function () {
-      if (!fs.existsSync(query.output)) {
-        const err = fs.mkdirSync(query.output, 0o777);
-        if (err) {
-          throw err;
-        }
-      }
-      var source = path.join(outputTemp, `${name}.png`);
-      var dest = path.resolve(query.output, `${name}.png`);
-      return pngOptimize(source, dest, config.colors);
-    })
-    .then(function () {
-      var source = path.join(outputTemp, `${name}.json`);
-      var dest = path.resolve(query.output, `${name}.json`);
+  framesPacker.initFrames();
+  framesPacker.compressFrames();
 
-      fse.copy(source, dest, function () {
-        setTimeout(function () {
-          var content = buildFiles(self, query, self.options, name);
-          process.nextTick(function () {
-            fse.remove(inputTemp);
-            fse.remove(outputTemp);
-          });
-          callback(null, content);
-        }, 500);
+  preprocessAsync(framesPacker.frames, framesPacker.config)
+    .then(function (compressdFrames) {
+      return getImageSizeAsync(compressdFrames, framesPacker.config);
+    })
+    .then(function (sizedFrames) {
+      var binPacking = new BinPacking(sizedFrames);
+      binPacking.pack();
+      var packedFrames = binPacking.packed;
+      var canvasSize = {
+        width: binPacking.canvasWidth,
+        height: binPacking.canvasHeight
+      };
+      var outputPath = path.join(outputTemp, `${framesPacker.output}`);
+      fse.ensureDirSync(outputTemp);
+      return spritesheetAsync(packedFrames, canvasSize, outputPath, framesPacker.config);
+    })
+    .then(function (sourcePath) {
+      var destPath = path.resolve(path.join(query.output, framesPacker.output));
+      return Promise.all([
+        pngOptimizeAsync(`${sourcePath}.png`, `${destPath}.png`, framesPacker.config.colors),
+        fse.copy(`${sourcePath}.json`, `${destPath}.json`)
+      ]);
+    })
+    .then(function () {
+      var content = buildFiles(self, query, self.options, framesPacker.output);
+      process.nextTick(function () {
+        fse.remove(inputTemp);
+        fse.remove(outputTemp);
       });
+      callback(null, content);
     })
     .catch(function (error) {
       if (query.verbose) {
@@ -273,7 +137,7 @@ module.exports = function (content) {
         self.emitError(`图片合成或处理过程中发生错误, 系统中很可能没有正确安装 ImageMagick 或 pngquant 依赖。请参考 https://github.com/ant-tinyjs/tinyjs-resource-loader#%E7%B3%BB%E7%BB%9F%E4%BE%9D%E8%B5%96 来解决该问题。`);
       }
 
-      var content = buildFiles(self, query, self.options, name);
+      var content = buildFiles(self, query, self.options, framesPacker.output);
       process.nextTick(function () {
         fse.remove(inputTemp);
         fse.remove(outputTemp);
@@ -283,14 +147,3 @@ module.exports = function (content) {
 };
 
 module.exports.raw = true;
-
-var defaults = {
-  interpolate: '',
-  trim: false,
-  scale: 1,
-  padding: '10',
-  colors: 0,
-  skip: 0,
-  files: null,
-  excludes: []
-};
