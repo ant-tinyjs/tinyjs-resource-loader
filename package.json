@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/ant-tinyjs/tinyjs-resource-loader#readme",
   "dependencies": {
-    "bin-packing-core": "^0.1.3",
+    "bin-packing-core": "^0.1.4",
     "bluebird": "^3.5.0",
     "file-loader": "^0.11.2",
     "fs-extra": "^6.0.1",
