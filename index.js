@@ -97,7 +97,7 @@ module.exports = function (content) {
   framesPacker.initFrames();
   framesPacker.compressFrames();
 
-  preprocessAsync(framesPacker.frames, framesPacker.config)
+  preprocessAsync(framesPacker.frames, inputTemp, framesPacker.config)
     .then(function (compressdFrames) {
       return getImageSizeAsync(compressdFrames, framesPacker.config);
     })
