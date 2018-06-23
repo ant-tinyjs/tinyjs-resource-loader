@@ -107,6 +107,7 @@ dist
 + `files`: 以 `[path]-[name]` 对象格式配置的文件路径，如果配置了 `files`，将不会从 `.tileset` 所在目录读取动画帧，而且从 `files` 指定的路径中读取
 + `excludes`: 合成时排除的图片路径
 + `interpolate`: `$name$-fallback` 形式的字符串（可不包含 `$name$`），用于修改名称
++ `rotatable`: 图片合成雪碧图时是否可旋转
 
 `files` 配置的路径为相对于 `.tileset` 所在目录的路径，示例：
 ```yaml

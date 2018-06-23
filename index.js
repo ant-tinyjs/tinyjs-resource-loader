@@ -102,7 +102,10 @@ module.exports = function (content) {
       return getImageSizeAsync(compressdFrames, framesPacker.config);
     })
     .then(function (sizedFrames) {
-      var binPacking = new BinPacking(framesPacker.output, sizedFrames);
+      var binPacking = new BinPacking(framesPacker.output, sizedFrames, {
+        rotatable: framesPacker.config.rotatable,
+        algorithm: 'max-rects'
+      });
       binPacking.pack();
       var packedFrames = binPacking.packed;
       var canvasSize = {
