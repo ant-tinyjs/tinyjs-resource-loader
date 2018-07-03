@@ -16,10 +16,15 @@ var pngOptimizeAsync = require('./lib/pngOptimizeAsync');
 var urlLoader = require('url-loader');
 var jsonLoader = require('json-loader');
 
-function rewriteJSON (content, imagePathStr) {
+function rewriteJSON (content, imagePathStr, loader) {
   var sheetConfig = JSON.parse(content);
   var imagePath = /"([^"]+)"/.exec(imagePathStr)[1];
   sheetConfig.meta.image = imagePath;
+
+  if (loader === 'json') {
+    sheetConfig.meta.json = `${imagePath.substr(0, imagePath.indexOf('.')) || imagePath}.json`;
+  }
+
   return JSON.stringify(sheetConfig);
 }
 
@@ -39,7 +44,7 @@ function buildFiles (context, query, options = {}, name) {
   // build json
   var jsonFullPath = path.resolve(query.output, `${name}.json`);
   var jsonStr = fs.readFileSync(jsonFullPath);
-  var jsonContent = rewriteJSON(jsonStr, imagePathStr);
+  var jsonContent = rewriteJSON(jsonStr, imagePathStr, query.loader);
   var jsonContext = Object.create(context);
   jsonContext.resourcePath = jsonFullPath;
   jsonContext.query = query.json;
