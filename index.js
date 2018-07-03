@@ -22,7 +22,7 @@ function rewriteJSON (content, imagePathStr, loader) {
   sheetConfig.meta.image = imagePath;
 
   if (loader === 'json') {
-    sheetConfig.meta.json = `${imagePath.substr(0, imagePath.indexOf('.')) || imagePath}.json`;
+    sheetConfig.meta.json = `${imagePath.substr(0, imagePath.lastIndexOf('.png')) || imagePath}.json`;
   }
 
   return JSON.stringify(sheetConfig);
