@@ -28,35 +28,51 @@ function rewriteJSON (content, imagePathStr, loader) {
   return JSON.stringify(sheetConfig);
 }
 
-function buildFiles (context, query, options = {}, name) {
+function buildFiles (context, query, options = {}, name, callback) {
   var content = '';
   if (query.loader === 'none') {
     return content;
   }
   // build image
+  var imagePathStr;
   var imageFullPath = path.resolve(query.output, `${name}.png`);
   var imageContent = fs.readFileSync(imageFullPath);
   var imageContext = Object.create(context);
   imageContext.resourcePath = imageFullPath;
   imageContext.query = query.image;
   imageContext.options = options;
-  var imagePathStr = urlLoader.call(imageContext, imageContent);
-  // build json
-  var jsonFullPath = path.resolve(query.output, `${name}.json`);
-  var jsonStr = fs.readFileSync(jsonFullPath);
-  var jsonContent = rewriteJSON(jsonStr, imagePathStr, query.loader);
-  var jsonContext = Object.create(context);
-  jsonContext.resourcePath = jsonFullPath;
-  jsonContext.query = query.json;
-  jsonContext.options = options;
 
-  if (query.loader === 'json') {
-    content = jsonLoader.call(jsonContext, jsonContent);
+  if ( query.image && query.image.loader ) {
+    imageContext.callback = (err, result) => {
+      callback(
+        afterImage(result)
+      );
+    }
+    require(query.image.loader).call(imageContext, imageContent);
   } else {
-    content = urlLoader.call(jsonContext, jsonContent);
+    imagePathStr = urlLoader.call(imageContext, imageContent);
+    callback(
+      afterImage(imagePathStr)
+    ) 
   }
 
-  return content;
+  function afterImage(imagePathStr) {
+    var content = ''
+    // build json
+    var jsonFullPath = path.resolve(query.output, `${name}.json`);
+    var jsonStr = fs.readFileSync(jsonFullPath);
+    var jsonContent = rewriteJSON(jsonStr, imagePathStr, query.loader);
+    var jsonContext = Object.create(context);
+    jsonContext.resourcePath = jsonFullPath;
+    jsonContext.query = query.json;
+    jsonContext.options = options;
+
+    if (query.loader === 'json') {
+      content = jsonLoader.call(jsonContext, jsonContent);
+    } else {
+      content = urlLoader.call(jsonContext, jsonContent);
+    }
+  }
 }
 
 module.exports = function (content) {
@@ -86,17 +102,22 @@ module.exports = function (content) {
     var imageFullPath = path.resolve(query.output, `${framesPacker.output}.png`);
     if (!fs.existsSync(imageFullPath)) {
       self.emitError(`检测到 process 参数被禁用, 但无法从 output 参数配置的目录中读取 ${framesPacker.output}.json 和 ${framesPacker.output}.png，请确保这些文件在上次构建时已经生成到该目录中。`);
+      return afterNoProcess(result);
     } else {
       self.emitWarning(`检测到 process 参数被禁用, 不会执行图片合成及处理过程。${framesPacker.output}.json 和 ${framesPacker.output}.png 会直接从 output 参数配置的目录中读取。`);
-      result = buildFiles(self, query, self.options, framesPacker.output);
+      return buildFiles(self, query, self.options, framesPacker.output, function (result) {
+        afterNoProcess(result);
+      });
     }
 
-    process.nextTick(function () {
-      fse.remove(inputTemp);
-      fse.remove(outputTemp);
-    });
+    function afterNoProcess() {
+      process.nextTick(function () {
+        fse.remove(inputTemp);
+        fse.remove(outputTemp);
+      });
+      callback(null, result);
+    }
 
-    return callback(null, result);
   }
 
   framesPacker.initFrames();
@@ -129,12 +150,14 @@ module.exports = function (content) {
       ]);
     })
     .then(function () {
-      var content = buildFiles(self, query, self.options, framesPacker.output);
-      process.nextTick(function () {
-        fse.remove(inputTemp);
-        fse.remove(outputTemp);
+      buildFiles(self, query, self.options, framesPacker.output, function (content) {
+
+        process.nextTick(function () {
+          fse.remove(inputTemp);
+          fse.remove(outputTemp);
+        });
+        callback(null, content);
       });
-      callback(null, content);
     })
     .catch(function (error) {
       if (query.verbose) {
@@ -145,12 +168,14 @@ module.exports = function (content) {
         self.emitError(`图片合成或处理过程中发生错误, 系统中很可能没有正确安装 ImageMagick 或 pngquant 依赖。请参考 https://github.com/ant-tinyjs/tinyjs-resource-loader#%E7%B3%BB%E7%BB%9F%E4%BE%9D%E8%B5%96 来解决该问题。`);
       }
 
-      var content = buildFiles(self, query, self.options, framesPacker.output);
-      process.nextTick(function () {
-        fse.remove(inputTemp);
-        fse.remove(outputTemp);
+      buildFiles(self, query, self.options, framesPacker.output, function (content) {
+        process.nextTick(function () {
+          fse.remove(inputTemp);
+          fse.remove(outputTemp);
+        });
+        callback(null, content);
       });
-      callback(null, content);
+      
     });
 };
 
