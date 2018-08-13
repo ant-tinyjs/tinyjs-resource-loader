@@ -72,6 +72,7 @@ function buildFiles (context, query, options = {}, name, callback) {
     } else {
       content = urlLoader.call(jsonContext, jsonContent);
     }
+    return content;
   }
 }
 
