@@ -42,22 +42,20 @@ function buildFiles (context, query, options = {}, name, callback) {
   imageContext.query = query.image;
   imageContext.options = options;
 
-  if ( query.image && query.image.loader ) {
+  if (query.image && query.image.loader) {
     imageContext.callback = (err, result) => {
-      callback(
-        afterImage(result)
-      );
-    }
+      if (err) imageContext.emitError(err);
+
+      callback(afterImage(result));
+    };
     require(query.image.loader).call(imageContext, imageContent);
   } else {
     imagePathStr = urlLoader.call(imageContext, imageContent);
-    callback(
-      afterImage(imagePathStr)
-    ) 
+    callback(afterImage(imagePathStr));
   }
 
   function afterImage(imagePathStr) {
-    var content = ''
+    var content = '';
     // build json
     var jsonFullPath = path.resolve(query.output, `${name}.json`);
     var jsonStr = fs.readFileSync(jsonFullPath);
@@ -85,6 +83,14 @@ module.exports = function (content) {
   var inputTemp = tempfile();
   var outputTemp = tempfile();
 
+  function afterNoProcess(result) {
+    process.nextTick(function () {
+      fse.remove(inputTemp);
+      fse.remove(outputTemp);
+    });
+    callback(null, result);
+  }
+
   query.process = typeof query.process === 'undefined' ? true : query.process;
   query.output = query.output || inputTemp;
 
@@ -110,15 +116,6 @@ module.exports = function (content) {
         afterNoProcess(result);
       });
     }
-
-    function afterNoProcess() {
-      process.nextTick(function () {
-        fse.remove(inputTemp);
-        fse.remove(outputTemp);
-      });
-      callback(null, result);
-    }
-
   }
 
   framesPacker.initFrames();
@@ -152,7 +149,6 @@ module.exports = function (content) {
     })
     .then(function () {
       buildFiles(self, query, self.options, framesPacker.output, function (content) {
-
         process.nextTick(function () {
           fse.remove(inputTemp);
           fse.remove(outputTemp);
@@ -176,7 +172,6 @@ module.exports = function (content) {
         });
         callback(null, content);
       });
-      
     });
 };
 
