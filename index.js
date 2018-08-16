@@ -46,16 +46,20 @@ function buildFiles (context, query, options = {}, name, callback) {
   if (query.image && query.image.loader) {
     imageContext.callback = (err, result) => {
       if (err) imageContext.emitError(err);
-
-      callback(afterImage(result));
+      afterImage(result, function (rs) {
+        callback(rs);
+      });
+      
     };
     require(query.image.loader).call(imageContext, imageContent);
   } else {
     imagePathStr = urlLoader.call(imageContext, imageContent);
-    callback(afterImage(imagePathStr));
+    afterImage(imagePathStr, function(rs) {
+      callback(rs);
+    })
   }
 
-  function afterImage(imagePathStr) {
+  function afterImage(imagePathStr, cb) {
     var content = '';
     // build json
     var jsonFullPath = path.resolve(query.output, `${name}.json`);
@@ -66,12 +70,20 @@ function buildFiles (context, query, options = {}, name, callback) {
     jsonContext.query = query.json;
     jsonContext.options = options;
 
-    if (query.loader === 'json') {
-      content = jsonLoader.call(jsonContext, jsonContent);
+    if ( query.json && query.json.loader ) {
+      jsonContext.callback = (err, result) => {
+        if (err) jsonContext.emitError(err);
+        callback(result);
+      };
+      require(query.json.loader).call(jsonContext, jsonContent);
     } else {
-      content = urlLoader.call(jsonContext, jsonContent);
+      if (query.loader === 'json') {
+        content = jsonLoader.call(jsonContext, jsonContent);
+      } else {
+        content = urlLoader.call(jsonContext, jsonContent);
+      }
+      cb(content);
     }
-    return content;
   }
 }
 
