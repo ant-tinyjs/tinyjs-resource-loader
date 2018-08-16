@@ -7,7 +7,7 @@
 ## 安装
 `npm install tinyjs-resource-loader -D`
 
-## 使用方法
+## 使用方法 
 1. 在动画帧（雪碧图）目录中创建 `.tileset` （或任意名称）配置文件
 ```bash
 animation
