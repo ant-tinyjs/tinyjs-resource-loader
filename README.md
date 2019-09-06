@@ -7,7 +7,7 @@
 ## 安装
 `npm install tinyjs-resource-loader -D`
 
-## 使用方法 
+## 使用方法
 1. 在动画帧（雪碧图）目录中创建 `.tileset` （或任意名称）配置文件
 ```bash
 animation
@@ -94,6 +94,7 @@ dist
 + `query.process`：是否强制进行图片处理，`false` 时直接从目录中读取先前构建好的文件
 + `query.image`：图片文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数
 + `query.json`：JSON 文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数。`query.loader` 为 `json` 时无效
++ `query.resource`: 按照配置的模板对 JSON 文件中的 json 和图片路径进行替换。仅在 `query.loader` 为 `json` 时有效
 + `query.verbose`: 是否展示完整错误日志
 
 > `query.process` 设置为 `false` 时，会跳过图片处理过程中的前 4 步，直接从 `query.output` 配置的目录中读取 JSON 和图片，并通过 [url-loader](https://github.com/webpack-contrib/url-loader) 将它们构建到指定目录中，但会产生 **webpack warning**。这是为了确保项目在本地构建过一次以后，在远程机器（很可能没有安装 ImageMagick 或 pngquant 系统依赖）也能够进行构建，兼顾跨平台云构建的需求

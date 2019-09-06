@@ -16,14 +16,22 @@ var pngOptimizeAsync = require('./lib/pngOptimizeAsync');
 var urlLoader = require('url-loader');
 var jsonLoader = require('json-loader');
 
-function rewriteJSON (content, imagePathStr, loader) {
+function rewriteJSON (content, imagePathStr, loader, resource) {
   var sheetConfig = JSON.parse(content);
   var imagePath = /"([^"]+)"/.exec(imagePathStr)[1];
   sheetConfig.meta.image = imagePath;
 
+  if (resource) {
+    sheetConfig.meta.image = `$$${resource.replace('$url', sheetConfig.meta.image)}$$`;
+  }
+
   if (loader === 'json') {
     // sheetConfig.meta.json = `${imagePath.substr(0, imagePath.lastIndexOf('.png')) || imagePath}.json`;
     sheetConfig.meta.json = `${path.basename(imagePath, '.png')}.json`;
+
+    if (resource) {
+      sheetConfig.meta.json = `$$${resource.replace('$url', sheetConfig.meta.json)}$$`;
+    }
   }
 
   return JSON.stringify(sheetConfig);
@@ -49,14 +57,13 @@ function buildFiles (context, query, options = {}, name, callback) {
       afterImage(result, function (rs) {
         callback(rs);
       });
-      
     };
     require(query.image.loader).call(imageContext, imageContent);
   } else {
     imagePathStr = urlLoader.call(imageContext, imageContent);
     afterImage(imagePathStr, function(rs) {
       callback(rs);
-    })
+    });
   }
 
   function afterImage(imagePathStr, cb) {
@@ -64,21 +71,26 @@ function buildFiles (context, query, options = {}, name, callback) {
     // build json
     var jsonFullPath = path.resolve(query.output, `${name}.json`);
     var jsonStr = fs.readFileSync(jsonFullPath);
-    var jsonContent = rewriteJSON(jsonStr, imagePathStr, query.loader);
+    var jsonContent = rewriteJSON(jsonStr, imagePathStr, query.loader, query.resource);
     var jsonContext = Object.create(context);
     jsonContext.resourcePath = jsonFullPath;
     jsonContext.query = query.json;
     jsonContext.options = options;
 
-    if ( query.json && query.json.loader ) {
+    if (query.json && query.json.loader) {
       jsonContext.callback = (err, result) => {
         if (err) jsonContext.emitError(err);
         callback(result);
       };
+
       require(query.json.loader).call(jsonContext, jsonContent);
     } else {
       if (query.loader === 'json') {
         content = jsonLoader.call(jsonContext, jsonContent);
+
+        if (query.resource) {
+          content = content.split('$$').map(segment => segment.replace(/(^")|("$)/g, '')).join('');
+        }
       } else {
         content = urlLoader.call(jsonContext, jsonContent);
       }
@@ -135,8 +147,8 @@ module.exports = function (content) {
   framesPacker.compressFrames();
 
   preprocessAsync(framesPacker.frames, inputTemp, framesPacker.config)
-    .then(function (compressdFrames) {
-      return getImageSizeAsync(compressdFrames, framesPacker.config);
+    .then(function (compressedFrames) {
+      return getImageSizeAsync(compressedFrames, framesPacker.config);
     })
     .then(function (sizedFrames) {
       var binPacking = new BinPacking(framesPacker.output, sizedFrames, {
