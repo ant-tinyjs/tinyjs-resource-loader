@@ -46,10 +46,11 @@ function buildFiles (context, query, options = {}, name, callback) {
   var imagePathStr;
   var imageFullPath = path.resolve(query.output, `${name}.png`);
   var imageContent = fs.readFileSync(imageFullPath);
-  var imageContext = Object.create(context);
-  imageContext.resourcePath = imageFullPath;
-  imageContext.query = query.image;
-  imageContext.options = options;
+  var imageContext = Object.assign({}, context, {
+    resourcePath: imageFullPath,
+    query: query.image,
+    options: options
+  });
 
   if (query.image && query.image.loader) {
     imageContext.callback = (err, result) => {
@@ -72,10 +73,11 @@ function buildFiles (context, query, options = {}, name, callback) {
     var jsonFullPath = path.resolve(query.output, `${name}.json`);
     var jsonStr = fs.readFileSync(jsonFullPath);
     var jsonContent = rewriteJSON(jsonStr, imagePathStr, query.loader, query.resource);
-    var jsonContext = Object.create(context);
-    jsonContext.resourcePath = jsonFullPath;
-    jsonContext.query = query.json;
-    jsonContext.options = options;
+    var jsonContext = Object.assign({}, context, {
+      resourcePath: jsonFullPath,
+      query: query.json,
+      options: options
+    });
 
     if (query.json && query.json.loader) {
       jsonContext.callback = (err, result) => {
