@@ -14,7 +14,6 @@ var spritesheetAsync = require('./lib/spritesheetAsync');
 var pngOptimizeAsync = require('./lib/pngOptimizeAsync');
 
 var urlLoader = require('url-loader');
-var jsonLoader = require('json-loader');
 
 function rewriteJSON (content, imagePathStr, loader, resource) {
   var sheetConfig = JSON.parse(content);
@@ -37,74 +36,59 @@ function rewriteJSON (content, imagePathStr, loader, resource) {
   return JSON.stringify(sheetConfig);
 }
 
-function buildFiles (context, query, options = {}, name, callback) {
+function buildFiles (context, options, name, callback) {
   var content = '';
-  if (query.loader === 'none') {
+  if (options.loader === 'none') {
     return content;
   }
   // build image
   var imagePathStr;
-  var imageFullPath = path.resolve(query.output, `${name}.png`);
+  var imageFullPath = path.resolve(options.output, `${name}.png`);
   var imageContent = fs.readFileSync(imageFullPath);
   var imageContext = Object.assign({}, context, {
-    resourcePath: imageFullPath,
-    query: query.image,
-    options: options
+    resourcePath: imageFullPath
   });
-
-  if (query.image && query.image.loader) {
-    imageContext.callback = (err, result) => {
-      if (err) imageContext.emitError(err);
-      afterImage(result, function (rs) {
-        callback(rs);
-      });
-    };
-    require(query.image.loader).call(imageContext, imageContent);
-  } else {
-    imagePathStr = urlLoader.call(imageContext, imageContent);
-    afterImage(imagePathStr, function(rs) {
-      callback(rs);
-    });
+  if (options.image) {
+    var imageOptions = Object.assign({}, options, options.image)
+    delete imageOptions.image;
+    delete imageOptions.json;
+    imageContext = Object.assign(imageContext, { query: imageOptions });
   }
+  imagePathStr = urlLoader.call(imageContext, imageContent);
+  afterImage(imagePathStr, function(rs) {
+    callback(rs);
+  });
 
   function afterImage(imagePathStr, cb) {
     var content = '';
     // build json
-    var jsonFullPath = path.resolve(query.output, `${name}.json`);
+    var jsonFullPath = path.resolve(options.output, `${name}.json`);
     var jsonStr = fs.readFileSync(jsonFullPath);
-    var jsonContent = rewriteJSON(jsonStr, imagePathStr, query.loader, query.resource);
+    var jsonContent = rewriteJSON(jsonStr, imagePathStr);
+    if (options.loader === 'json') {
+      const str = `module.exports = ${jsonContent};`;
+      cb(str);
+      return;
+    }
     var jsonContext = Object.assign({}, context, {
-      resourcePath: jsonFullPath,
-      query: query.json,
-      options: options
+      resourcePath: jsonFullPath
     });
 
-    if (query.json && query.json.loader) {
-      jsonContext.callback = (err, result) => {
-        if (err) jsonContext.emitError(err);
-        callback(result);
-      };
-
-      require(query.json.loader).call(jsonContext, jsonContent);
-    } else {
-      if (query.loader === 'json') {
-        content = jsonLoader.call(jsonContext, jsonContent);
-
-        if (query.resource) {
-          content = content.split('$$').map(segment => segment.replace(/(^")|("$)/g, '')).join('');
-        }
-      } else {
-        content = urlLoader.call(jsonContext, jsonContent);
-      }
-      cb(content);
+    if (options.json) {
+      var jsonOptions = Object.assign({}, options, options.json);
+      delete jsonOptions.image;
+      delete jsonOptions.json;
+      jsonContext = Object.assign(jsonContext, { query: jsonOptions });
     }
+    content = urlLoader.call(jsonContext, jsonContent);
+    cb(content);
   }
 }
 
 module.exports = function (content) {
   var self = this;
   var callback = self.async();
-  var query = loaderUtils.getOptions(self) || {};
+  var options = loaderUtils.getOptions(self) || {};
   var config = yaml.load(content.toString()) || {};
   var framesPacker = new FramesPacker(self.context, config);
   var inputTemp = tempfile();
@@ -118,9 +102,8 @@ module.exports = function (content) {
     callback(null, result);
   }
 
-  query.process = typeof query.process === 'undefined' ? true : query.process;
-  query.output = query.output || inputTemp;
-
+  options.process = typeof options.process === 'undefined' ? true : options.process;
+  options.output = options.output || inputTemp;
   self.cacheable(true);
   self.addContextDependency(self.context);
 
@@ -131,15 +114,15 @@ module.exports = function (content) {
     });
   }
   // 如果禁用了 process 参数
-  if (!query.process) {
+  if (!options.process) {
     var result = '';
-    var imageFullPath = path.resolve(query.output, `${framesPacker.output}.png`);
+    var imageFullPath = path.resolve(options.output, `${framesPacker.output}.png`);
     if (!fs.existsSync(imageFullPath)) {
       self.emitError(`检测到 process 参数被禁用, 但无法从 output 参数配置的目录中读取 ${framesPacker.output}.json 和 ${framesPacker.output}.png，请确保这些文件在上次构建时已经生成到该目录中。`);
       return afterNoProcess(result);
     } else {
       self.emitWarning(`检测到 process 参数被禁用, 不会执行图片合成及处理过程。${framesPacker.output}.json 和 ${framesPacker.output}.png 会直接从 output 参数配置的目录中读取。`);
-      return buildFiles(self, query, self.options, framesPacker.output, function (result) {
+      return buildFiles(self, options, framesPacker.output, function (result) {
         afterNoProcess(result);
       });
     }
@@ -168,14 +151,14 @@ module.exports = function (content) {
       return spritesheetAsync(packedFrames, canvasSize, outputPath, framesPacker.config);
     })
     .then(function (sourcePath) {
-      var destPath = path.resolve(path.join(query.output, framesPacker.output));
+      var destPath = path.resolve(path.join(options.output, framesPacker.output));
       return Promise.all([
         pngOptimizeAsync(`${sourcePath}.png`, `${destPath}.png`, framesPacker.config.colors),
         fse.copy(`${sourcePath}.json`, `${destPath}.json`)
       ]);
     })
     .then(function () {
-      buildFiles(self, query, self.options, framesPacker.output, function (content) {
+      buildFiles(self, options, framesPacker.output, function (content) {
         process.nextTick(function () {
           fse.remove(inputTemp);
           fse.remove(outputTemp);
@@ -184,15 +167,15 @@ module.exports = function (content) {
       });
     })
     .catch(function (error) {
-      if (query.verbose) {
+      if (options.verbose) {
         console.error(error);
       }
 
-      if (query.process) {
+      if (options.process) {
         self.emitError(`图片合成或处理过程中发生错误, 系统中很可能没有正确安装 ImageMagick 或 pngquant 依赖。请参考 https://github.com/ant-tinyjs/tinyjs-resource-loader#%E7%B3%BB%E7%BB%9F%E4%BE%9D%E8%B5%96 来解决该问题。`);
       }
 
-      buildFiles(self, query, self.options, framesPacker.output, function (content) {
+      buildFiles(self, options, framesPacker.output, function (content) {
         process.nextTick(function () {
           fse.remove(inputTemp);
           fse.remove(outputTemp);

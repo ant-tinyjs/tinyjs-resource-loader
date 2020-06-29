@@ -1,0 +1,24 @@
+{
+  "scripts": {
+    "dev": "NODE_ENV=development webpack-dev-server",
+    "build": "rm -rf dist && NODE_ENV=production webpack -p"
+  },
+  "dependencies": {
+    "bin-packing-core": "^0.1.5",
+    "bluebird": "^3.5.0",
+    "fs-extra": "^6.0.1",
+    "glob": "^7.1.2",
+    "graceful-fs": "^4.1.11",
+    "loader-utils": "^1.1.0",
+    "pngquant": "^3.0.0",
+    "tempfile": "^2.0.0",
+    "file-loader": "^6.0.0",
+    "url-loader": "^4.1.0",
+    "yaml-js": "^0.1.5"
+  },
+  "devDependencies": {
+    "webpack": "^4.43.0",
+    "webpack-cli": "^3.3.11",
+    "webpack-dev-server": "^3.11.0"
+  }
+}
