@@ -2,7 +2,7 @@
 
 > GitHub: https://github.com/ant-tinyjs/tinyjs-resource-loader
 
-用于处理 tinyjs 游戏资源的 webpack loader，旨在让 tinyjs 项目中的动画帧（雪碧图）合成流程更加符合 webpack 工作流
+用于处理 tinyjs 中 tileset 游戏资源的 webpack loader
 
 ## 安装
 `npm install tinyjs-resource-loader -D`
@@ -24,62 +24,58 @@ scale: 0.5
 ```
 3. 在 `webpack.config.js` 中配置 `tinyjs-resource-loader`，该 loader 应作用于上面的配置文件
 ```javascript
-module.export = {
-  // statements
-  module: {
-    loaders: [
-      {
-        test: /\.tileset/i,
-        loader: 'tinyjs-resource-loader',
-        query: {
-          output: 'game/images',
-          image: { // 图片的 url-loader 参数
-            name: 'resources/[name].[ext]',
-            limit: 4096
-          },
-          json: { // JSON 的 url-loader 参数
-            name: 'resources/[name].[ext]',
-            limit: 1
-          }
-        }
+{
+  test: /\.tileset$/,
+  use: [
+    {
+      loader: 'tinyjs-resource-loader',
+      options: {
+        process: true,
+        output: './output',
+        name: '[name]_[hash:6].[ext]',
+        limit: false,
+        outputPath: 'res'
+        // image: {
+        //   outputPath: 'res',
+        //   publicPath: './'
+        // },
+        // json: {
+        //   outputPath: 'res',
+        //   publicPath: './res'
+        // }
+        // loader: 'json',
       }
-    ]
-  },
-  output: {
-    path: path.resovle('dist')
-  }
-};
+    }
+  ]
+}
 ```
 4. 在模块中引用 `.tileset` 文件
 ```javascript
 import tilesetAnimationJSON from './frames/animation/.tileset';
-// 得到的是 JSON 文件的路径，并且 JSON 中图片的路径会自动根据 resources/[name].[ext] 配置项进行替换
 ```
 
 ## 处理过程
-1. 动画抽帧：通过指定 `skip` 配置项来实现每 N 帧抽取一帧的功能
-2. 合成雪碧图：通过 [spritesheet.js](https://github.com/krzysztof-o/spritesheet.js) 将图片合成雪碧图并生成 tinyjs 所需的 JSON 文件
-3. 图片压缩：利用 [node-pngquant](https://github.com/papandreou/node-pngquant) 对合成的 PNG 格式图片按照 `colors` 指定的颜色值进行压缩
-4. 将处理得到的 JSON 和图片文件写入 `game/images` 目录（由 `query.output` 指定）
+1. 合成雪碧图：通过 [spritesheet.js](https://github.com/krzysztof-o/spritesheet.js) 将 `.tileset` 同目录的图片合成标准 tileset PNG 和 JSON 文件
+2. 图片压缩：利用 [node-pngquant](https://github.com/papandreou/node-pngquant) 对合成的 PNG 格式图片按照 `colors` 指定的颜色值进行压缩
+3. 将处理得到的 JSON 和图片文件写入 `example/output` 目录（由配置参数 `options.output` 指定）
+4. 通过 [url-loader](https://github.com/webpack-contrib/url-loader) 将 `example/output`中的 JSON[可选] 和图片构建到 `dist` 中（由 webpack config 中的 `output.path` 指定）。
+
 ```bash
-game
-├── frames
+example
+├── resources
 │   ├── animation # 这里是动画帧存放的目录
 │   │   ├── .tileset
 │   │   ├── 001.png
 │   │   ├── 002.png
 │   │   └── 003.png
-├── images # 图片处理后的 JSON 和图片存放目录
+│   └── index.js
+├── output # 图片处理后的 JSON 和图片存放目录
 │   ├── tileset-animation.json
 │   └── tileset-animation.png
-└── resources.js
-```
-5. 最后通过 [url-loader](https://github.com/webpack-contrib/url-loader) 将 `game/images`中的 JSON 和图片构建到 `dist/resources` 中（由 webpack config 中的 `output.path` 指定）。这一步会自动将 JSON 中 `meta.image` 项替换为图片的 `publicPath` 或 `base64` 编码（取决于 `query.image` 的配置）
-```bash
-dist
-└── resources
-    ├── tileset-animation.json
-    └── tileset-animation.png
+├── dist # 最终产物
+│   └── res
+│       ├── tileset-animation_[hash].json
+│       └── tileset-animation_[hash].png
 ```
 
 ## 系统依赖
@@ -87,17 +83,21 @@ dist
 + [ImageMagick](https://www.imagemagick.org/script/download.php)：提供 [spritesheet.js](https://github.com/krzysztof-o/spritesheet.js) 合成雪碧图所需的 `identify` 命令（主要用于获取一个或多个图像文件的格式和特性）
 + [pngquant](https://pngquant.org/)：提供 [node-pngquant](https://github.com/papandreou/node-pngquant) 压缩图片所需的 `pngquant` 命令
 
+> 注：如环境限制不能安装，请看以下的 `options.process` 配置解释
 
 ## 配置参数
-+ `query.output`: 图片处理后输出 JSON 和图片文件的目录，一般选择源码中的目录，建议提交远程仓库。设置为空时，则不会在源码目录中输出。
-+ `query.loader`: 指定 JSON 文件 由 `url-loader` 还是 `json-loader` 处理，或者完全不处理。默认为 `url`，可选 `json`、`none`
-+ `query.process`：是否强制进行图片处理，`false` 时直接从目录中读取先前构建好的文件
-+ `query.image`：图片文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数
-+ `query.json`：JSON 文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数。`query.loader` 为 `json` 时无效
-+ `query.resource`: 按照配置的模板对 JSON 文件中的 json 和图片路径进行替换。仅在 `query.loader` 为 `json` 时有效
-+ `query.verbose`: 是否展示完整错误日志
++ `options.output`: 图片处理后输出 JSON 和图片文件的目录，一般选择源码中的目录，建议提交远程仓库。设置为空时，则不会在源码目录中输出。
++ `options.loader`: 指定 JSON 文件最终产物是文件还是js对象，或者完全不处理，默认为 `url` 可选 `json`
++ `options.process`：是否强制进行图片处理，`false` 时直接从目录中读取先前构建好的文件
++ `options.outputPath`：即 [file-loader](https://github.com/webpack-contrib/file-loader) outputPath 配置
++ `options.publicPath`：即 [file-loader](https://github.com/webpack-contrib/file-loader) outputPath publicPath 配置
++ `options.image`：图片文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数
++ `options.json`：JSON 文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数。`options.loader` 为 `json` 时无效
++ `options.resource`: 按照配置的模板对 JSON 文件中的 json 和图片路径进行替换。仅在 `options.loader` 为 `json` 时有效
++ `options.verbose`: 是否展示完整错误日志
 
-> `query.process` 设置为 `false` 时，会跳过图片处理过程中的前 4 步，直接从 `query.output` 配置的目录中读取 JSON 和图片，并通过 [url-loader](https://github.com/webpack-contrib/url-loader) 将它们构建到指定目录中，但会产生 **webpack warning**。这是为了确保项目在本地构建过一次以后，在远程机器（很可能没有安装 ImageMagick 或 pngquant 系统依赖）也能够进行构建，兼顾跨平台云构建的需求
+> `outputPath` 和 `publicPath` 在 `options.image/json` 中配置时，优先级高于 `options` 中的
+> `options.process` 设置为 `false` 时，会跳过图片处理过程中的前 4 步，直接从 `options.output` 配置的目录中读取 JSON 和图片，并通过 [url-loader](https://github.com/webpack-contrib/url-loader) 将它们构建到指定目录中，但会产生 **webpack warning**。这是为了确保项目在本地构建过一次以后，在远程机器（很可能没有安装 ImageMagick 或 pngquant 系统依赖）也能够进行构建，兼顾跨平台云构建的需求
 
 ## 图片处理参数
 + `trim`：移除图片周围的空白，参照 [spritesheet.js](https://github.com/krzysztof-o/spritesheet.js)，默认 `false`
