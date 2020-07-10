@@ -15,7 +15,7 @@ var pngOptimizeAsync = require('./lib/pngOptimizeAsync');
 
 var urlLoader = require('url-loader');
 
-function rewriteJSON (content, imagePathStr, loader, resource) {
+function rewriteJSON (content, imagePathStr, mode, resource) {
   var sheetConfig = JSON.parse(content);
   var imagePath = /"([^"]+)"/.exec(imagePathStr)[1];
   sheetConfig.meta.image = imagePath;
@@ -24,10 +24,8 @@ function rewriteJSON (content, imagePathStr, loader, resource) {
     sheetConfig.meta.image = `$$${resource.replace('$url', sheetConfig.meta.image)}$$`;
   }
 
-  if (loader === 'json') {
-    // sheetConfig.meta.json = `${imagePath.substr(0, imagePath.lastIndexOf('.png')) || imagePath}.json`;
+  if (mode === 'inline') {
     sheetConfig.meta.json = `${path.basename(imagePath, '.png')}.json`;
-
     if (resource) {
       sheetConfig.meta.json = `$$${resource.replace('$url', sheetConfig.meta.json)}$$`;
     }
@@ -37,23 +35,21 @@ function rewriteJSON (content, imagePathStr, loader, resource) {
 }
 
 function buildFiles (context, options, name, callback) {
-  var content = '';
-  if (options.loader === 'none') {
-    return content;
+  var imageOptions = {};
+
+  for (let key in options) {
+    if (typeof key !== 'object') imageOptions[key] = options[key];
   }
+
   // build image
   var imagePathStr;
   var imageFullPath = path.resolve(options.output, `${name}.png`);
   var imageContent = fs.readFileSync(imageFullPath);
   var imageContext = Object.assign({}, context, {
-    resourcePath: imageFullPath
+    resourcePath: imageFullPath,
+    query: Object.assign({}, imageOptions, options.image)
   });
-  if (options.image) {
-    var imageOptions = Object.assign({}, options, options.image)
-    delete imageOptions.image;
-    delete imageOptions.json;
-    imageContext = Object.assign(imageContext, { query: imageOptions });
-  }
+
   imagePathStr = urlLoader.call(imageContext, imageContent);
   afterImage(imagePathStr, function(rs) {
     callback(rs);
@@ -64,22 +60,29 @@ function buildFiles (context, options, name, callback) {
     // build json
     var jsonFullPath = path.resolve(options.output, `${name}.json`);
     var jsonStr = fs.readFileSync(jsonFullPath);
-    var jsonContent = rewriteJSON(jsonStr, imagePathStr);
-    if (options.loader === 'json') {
-      const str = `module.exports = ${jsonContent};`;
-      cb(str);
-      return;
+    var jsonContent = rewriteJSON(jsonStr, imagePathStr, options.mode, options.resource);
+    if (options.mode === 'inline') {
+      if (options.resource) {
+        jsonContent = jsonContent.split('$$').map(segment => segment.replace(/(^")|("$)/g, '')).join('');
+      }
+
+      const source = `module.exports = ${jsonContent};`;
+      return cb(source);
+    } else if (options.mode === 'none') {
+      return cb(jsonContent);
     }
+
+    var jsonOptions = {};
+
+    for (let key in options) {
+      if (typeof key !== 'object') jsonOptions[key] = options[key];
+    }
+
     var jsonContext = Object.assign({}, context, {
-      resourcePath: jsonFullPath
+      resourcePath: jsonFullPath,
+      query: Object.assign({}, jsonOptions, options.json)
     });
 
-    if (options.json) {
-      var jsonOptions = Object.assign({}, options, options.json);
-      delete jsonOptions.image;
-      delete jsonOptions.json;
-      jsonContext = Object.assign(jsonContext, { query: jsonOptions });
-    }
     content = urlLoader.call(jsonContext, jsonContent);
     cb(content);
   }
