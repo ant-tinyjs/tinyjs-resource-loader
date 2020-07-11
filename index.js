@@ -133,7 +133,7 @@ module.exports = function (content) {
   framesPacker.initFrames();
   framesPacker.compressFrames();
 
-  readFromCacheAsync(options.cacheable, framesPacker.frames, framesPacker.output, options.output)
+  readFromCacheAsync(options.cacheable, config, framesPacker.frames, framesPacker.output, options.output)
     .then(function (cached) {
       if (!cached) {
         return preprocessAsync(framesPacker.frames, inputTemp, framesPacker.config)
