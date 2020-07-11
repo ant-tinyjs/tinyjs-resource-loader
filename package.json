@@ -1,10 +1,11 @@
 {
   "name": "tinyjs-resource-loader",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "用于处理 tiny.js 游戏资源的 webpack loader",
   "main": "index.js",
   "files": [
-    "lib", "index.js"
+    "lib",
+    "index.js"
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
