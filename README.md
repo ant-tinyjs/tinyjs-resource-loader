@@ -36,14 +36,15 @@ scale: 0.5
         output: './output',
         name: '[name]_[hash:6].[ext]',
         limit: false,
-        outputPath: 'res'
+        outputPath: 'res',
+        publicPath: './'
         // image: {
         //   outputPath: 'res',
         //   publicPath: './'
         // },
         // json: {
         //   outputPath: 'res',
-        //   publicPath: './res'
+        //   publicPath: './'
         // }
       }
     }

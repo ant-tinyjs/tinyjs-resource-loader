@@ -30,7 +30,7 @@ const config = {
               // },
               // json: {
               //   outputPath: 'res',
-              //   publicPath: './res'
+              //   publicPath: './'
               // }
             }
           }
