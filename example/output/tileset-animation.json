@@ -8,7 +8,7 @@
     "scale": "1"
   },
   "frames": {
-    "tileset-animation-0.png": {
+    "tileset-animation-001.png": {
       "frame": {
         "x": 10,
         "y": 10,
@@ -28,7 +28,7 @@
         "h": 20
       }
     },
-    "tileset-animation-1.png": {
+    "tileset-animation-002.png": {
       "frame": {
         "x": 10,
         "y": 50,
@@ -48,7 +48,7 @@
         "h": 20
       }
     },
-    "tileset-animation-2.png": {
+    "tileset-animation-003.png": {
       "frame": {
         "x": 10,
         "y": 90,
