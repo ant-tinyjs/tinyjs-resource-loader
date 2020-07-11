@@ -89,7 +89,8 @@ example
 ## 配置参数
 + `options.output`: 图片处理后输出 JSON 和图片文件的目录，一般选择源码中的目录，建议提交远程仓库。设置为空时，则不会在源码目录中输出。
 + `options.mode`: 指定 tileset JSON 的生成形式。默认为 `file`，生成 JSON 文件；指定为 `inline` 时生成 JSON 模块代码；指定为 `none` 时不处理
-+ `options.process`：是否强制进行图片处理，`false` 时直接从目录中读取先前构建好的文件
++ `options.process`：是否强制进行图片处理，默认为 `true`，指定为 `false` 时直接从 `options.output` 目录中读取先前构建好的文件
++ `options.cacheable`: 是否缓存处理结果，默认为 `false`，指定为 `true` 时根据`tileset` 和源图片文件直接从 `options.output` 目录中读取先前构建好的文件
 + `options.outputPath`：即 [file-loader](https://github.com/webpack-contrib/file-loader) outputPath 配置
 + `options.publicPath`：即 [file-loader](https://github.com/webpack-contrib/file-loader) outputPath publicPath 配置
 + `options.image`：图片文件的 [url-loader](https://github.com/webpack-contrib/url-loader) 参数
@@ -99,6 +100,7 @@ example
 
 > `outputPath` 和 `publicPath` 在 `options.image/json` 中配置时，优先级高于 `options` 中的
 > `options.process` 设置为 `false` 时，会跳过图片处理过程中的前 4 步，直接从 `options.output` 配置的目录中读取 JSON 和图片，并通过 [url-loader](https://github.com/webpack-contrib/url-loader) 将它们构建到指定目录中，但会产生 **webpack warning**。这是为了确保项目在本地构建过一次以后，在远程机器（很可能没有安装 ImageMagick 或 pngquant 系统依赖）也能够进行构建，兼顾跨平台云构建的需求
+> `options.cacheable` 建议设置为 `true`，可以提升 webpack 构建速度，以及规避在源图片不变的情况，`ImageMagick` 合成的雪碧图发生变化，产生额外的文件变化，影响开发效率
 > `options.resource` 示例：`'window.baseRoot + "$url"'`，`window.baseRoot` 是类似于 `/path/to/image/` 的路径。作用是在代码运行时拼接图片和 `JSON` 路径
 
 ## 图片处理参数

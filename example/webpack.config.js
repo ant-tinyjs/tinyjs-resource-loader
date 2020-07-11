@@ -20,7 +20,8 @@ const config = {
               output: './output',
               name: '[name]_[hash:6].[ext]',
               limit: false,
-              // loader: 'json', // json url
+              // mode: 'inline',
+              cacheable: true,
               outputPath: 'res',
               publicPath: './'
               // image: {

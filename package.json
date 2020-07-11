@@ -30,6 +30,7 @@
     "glob": "^7.1.2",
     "graceful-fs": "^4.1.11",
     "loader-utils": "^2.0.0",
+    "node-json-db": "^1.1.0",
     "pngquant": "^3.0.0",
     "tempfile": "^2.0.0",
     "url-loader": "^4.1.0",
