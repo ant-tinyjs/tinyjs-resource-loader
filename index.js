@@ -16,7 +16,7 @@ var pngOptimizeAsync = require('./lib/pngOptimizeAsync');
 
 var urlLoader = require('url-loader');
 
-function rewriteJSON (content, imagePathStr, mode, resource) {
+function rewriteJSON (content, imagePathStr, mode, resource, pixelFormat) {
   var sheetConfig = JSON.parse(content);
   var imagePath = /"([^"]+)"/.exec(imagePathStr)[1];
   sheetConfig.meta.image = imagePath;
@@ -32,10 +32,14 @@ function rewriteJSON (content, imagePathStr, mode, resource) {
     }
   }
 
+  if (pixelFormat) {
+    sheetConfig.meta.pixelFormat = pixelFormat;
+  }
+
   return JSON.stringify(sheetConfig);
 }
 
-function buildFiles (context, options, name, callback) {
+function buildFiles (context, options, config, name, callback) {
   var imageOptions = {};
 
   for (var key in options) {
@@ -61,7 +65,7 @@ function buildFiles (context, options, name, callback) {
     // build json
     var jsonFullPath = path.resolve(options.output, `${name}.json`);
     var jsonStr = fs.readFileSync(jsonFullPath);
-    var jsonContent = rewriteJSON(jsonStr, imagePathStr, options.mode, options.resource);
+    var jsonContent = rewriteJSON(jsonStr, imagePathStr, options.mode, options.resource, config.pixelFormat);
     if (options.mode === 'inline') {
       if (options.resource) {
         jsonContent = jsonContent.split('$$').map(segment => segment.replace(/(^")|("$)/g, '')).join('');
@@ -126,7 +130,7 @@ module.exports = function (content) {
       return afterProcess(result);
     } else {
       self.emitWarning(`检测到 process 参数被禁用, 不会执行图片合成及处理过程。${framesPacker.output}.json 和 ${framesPacker.output}.png 会直接从 output 参数配置的目录中读取。`);
-      return buildFiles(self, options, framesPacker.output, afterProcess);
+      return buildFiles(self, options, config, framesPacker.output, afterProcess);
     }
   }
 
@@ -165,7 +169,7 @@ module.exports = function (content) {
       }
     })
     .then(function () {
-      buildFiles(self, options, framesPacker.output, afterProcess);
+      buildFiles(self, options, config, framesPacker.output, afterProcess);
     })
     .catch(function (error) {
       if (options.verbose) {
@@ -176,7 +180,7 @@ module.exports = function (content) {
         self.emitError(`图片合成或处理过程中发生错误, 系统中很可能没有正确安装 ImageMagick 或 pngquant 依赖。请参考 https://github.com/ant-tinyjs/tinyjs-resource-loader#%E7%B3%BB%E7%BB%9F%E4%BE%9D%E8%B5%96 来解决该问题。`);
       }
 
-      buildFiles(self, options, framesPacker.output, afterProcess);
+      buildFiles(self, options, config, framesPacker.output, afterProcess);
     });
 };
 
